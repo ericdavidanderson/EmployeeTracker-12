@@ -2,20 +2,18 @@
 const mysql = require("mysql");
 const inquirer = require("inquirer");
 
+require("dotenv").config();
 
 //mysql connection (database)
 const connection = mysql.createConnection({
     host: "localhost",
-    port: 3301,
-    user: "root",
-    password: "MAGic9277$#pass",
-    database: "employeeTracker_db",
+  
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_DATABASE,
 });
 
-connection.connect(function (err) {
-    if (err) throw err;
-    cliPrompt();
-});
+
 
 const mPrompt = [
     {
@@ -461,7 +459,7 @@ let addEmpPrompt = [
         choices: function() {
             employees = [];
 
-            for(i = 0; i < employeeList.length) {
+            for(i = 0; i < employeeList.length; i++) {
                 const mId = i + 1;
 
                 employees.push(mId + ": " + employeeList[i].first_name + " " + employeeList[i].last_name);
@@ -900,3 +898,4 @@ function exit() {
 
 };
 
+ cliPrompt();
