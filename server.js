@@ -1,5 +1,5 @@
 //dependencies
-const mysql = require("mysql");
+const mysql = require("mysql2");
 const inquirer = require("inquirer");
 
 require("dotenv").config();
@@ -23,8 +23,8 @@ const mPrompt = [
       "View roles",
       "View departments",
       "Add departments",
-      "Add roles",
       "Add employees",
+      "Add roles",
       "Edit employees",
       "Remove employees",
       "Exit",
@@ -39,25 +39,27 @@ function cliPrompt() {
     .then(function (answer) {
       if (answer.action == "View employees") {
         viewAll();
+        if (answer.action == "Add roles") {
+        addRole();
       } else if (answer.action == "View departments") {
         viewDepts();
-      } else if (answer.action == "View roles") {
-        viewRoles();
       } else if (answer.action == "Add employees") {
         addEmployee();
       } else if (answer.action == "Add departments") {
-        addDepts();
-      } else if (answer.action == "Add roles") {
-        addRoles();
+        addDept();
       } else if (answer.action == "Edit employees") {
         editEmployees();
       } else if (answer.action == "Remove employees") {
         deleteEmployees();
+      } else if (answer.action == "View roles") {
+       viewRoles();}
+
       } else if (answer.action == "Exit") {
         exit();
       }
     });
-}
+  }
+
 
 function viewAll() {
   var query = "SELECT * FROM employees";
@@ -72,20 +74,33 @@ function viewAll() {
   });
 }
 
+function viewRoles() {
+  var query = "SELECT * FROM roles";
+  connection.query(query, function (err, res) {
+    console.log(`all roles:`);
+    res.forEach (roles => {
+      console.log(
+        `ID: ${roles.id} | Title: ${roles.title}  | Salary${roles.salary} | department_ID: ${roles.department-ID}`
+      );
+    });
+    cliPrompt();
+  });
+}
+
 function addEmployee() {
-  let query = "SELECT title FROM roles";
+  let query = "SELECT title FROM departments";
 
   let query2 =
-    "SELECT employees.first_name, employees.last_name, roles.title, roles.salary, departments.dept_name, employees.manager_id " +
+    "SELECT employees.first_name, employees.last_name, departments.title, departments.salary, departments.dept_name, employees.manager_id " +
     "FROM employees " +
-    "JOIN roles ON roles.id = employees.role_id " +
-    "JOIN departments ON roles.department_id = departments.id " +
+    "JOIN departments ON departments.id = employees.role_id " +
+    "JOIN departments ON departments.department_id = departments.id " +
     "ORDER BY employees.id;";
 
   connection.query(query, function (err, res) {
     if (err) throw err;
 
-    let rolesList = res;
+    let departmentsList = res;
 
     connection.query(query2, function (err, res) {
       if (err) throw err;
@@ -123,16 +138,16 @@ function addEmployee() {
           message: "Select new employee's role.",
 
           choices: function () {
-            roles = [];
+            departments = [];
 
-            for (i = 0; i < rolesList.length; i++) {
+            for (i = 0; i < departmentsList.length; i++) {
               const roleId = i + 1;
-              roles.push(roleId + ": " + rolesList[i].title);
+              departments.push(roleId + ": " + departmentsList[i].title);
             }
 
-            roles.unshift("0: Exit");
+            departments.unshift("0: Exit");
 
-            return roles;
+            return departments;
           },
         },
         {
@@ -162,7 +177,7 @@ function addEmployee() {
           },
 
           when: function (answers) {
-            return answers.select_roles !== "0: Exit";
+            return answers.select_departments !== "0: Exit";
           },
         },
       ];
@@ -209,10 +224,10 @@ function addEmployee() {
 
               .then(function (answer) {
                 let query =
-                  "SELECT employees.first_name, employees.last_name, roles.title, roles.salary, departments.dept_name, employees.manager_id " +
+                  "SELECT employees.first_name, employees.last_name, departments.title, departments.salary, departments.dept_name, employees.manager_id " +
                   "FROM employees " +
-                  "JOIN roles ON roles.id = employees.role_id " +
-                  "JOIN departments ON roles.department_id" +
+                  "JOIN departments ON departments.id = employees.role_id " +
+                  "JOIN departments ON departments.department_id" +
                   "ORDER BY employees.id";
                 connection.query(query, function (err, res) {
                   if (err) throw err;
@@ -309,7 +324,7 @@ function addDept() {
 
 function addRole() {
   let query1 =
-    "SELECT roles.title AS roles, roles.salary, departments.dept_name FROM roles INNER JOIN departments ON departments.id = roles.department_id;";
+    "SELECT departments.title AS departments, departments.salary, departments.dept_name FROM departments INNER JOIN departments ON departments.id = departments.department_id;";
 
   let query2 = "SELECT departments.dept_name FROM department";
 
@@ -361,7 +376,7 @@ function addRole() {
           } else {
             console.log(answer);
 
-            let query = "INSERT INTO roles SET ?";
+            let query = "INSERT INTO departments SET ?";
 
             connection.query(
               query,
@@ -389,7 +404,7 @@ function addRole() {
 
               .then(function (answer) {
                 let query =
-                  "SELECT roles.id, roles.title, AS roles, roles.salary, departments.dept_name FROM roles INNER JOIN departments ON departments.id = roles.department_id;";
+                  "SELECT departments.id, departments.title, AS departments, departments.salary, departments.dept_name FROM departments INNER JOIN departments ON departments.id = departments.department_id;";
 
                 connection.query(query, function (er, res) {
                   if (err) throw err;
@@ -410,19 +425,19 @@ function addRole() {
 }
 
 function editEmployees() {
-  let query = "SELECT title FROM roles";
+  let query = "SELECT title FROM departments";
 
   let query2 =
-    "SELECT employees.first_name, employees.last_name, roles.title, roles.salary, departments.dept_name, employees.manager.id " +
+    "SELECT employees.first_name, employees.last_name, departments.title, departments.salary, departments.dept_name, employees.manager.id " +
     "FROM employees " +
-    "JOIN roles ON roles.id = employees.role_id " +
-    "JOIN departments ON roles.department_id = departments.id" +
+    "JOIN departments ON departments.id = employees.role_id " +
+    "JOIN departments ON departments.department_id = departments.id" +
     "ORDER BY employees.id;";
 
   connection.query(query, function (err, res) {
     if (err) throw err;
 
-    let rolesList = res;
+    let departmentsList = res;
 
     connection.query(query2, function (err, res) {
       if (err) throw err;
@@ -487,16 +502,16 @@ function editEmployees() {
                 message: "Edit employee role.",
 
                 choices: function () {
-                  roles = [];
+                  departments = [];
 
-                  for (i = 0; i < rolesList.length; i++) {
+                  for (i = 0; i < departmentsList.length; i++) {
                     const roleId = i + 1;
 
-                    roles.push(roleId + ": " + rolesList[i].title);
+                    departments.push(roleId + ": " + departmentsList[i].title);
                   }
 
-                  roles.unshift("0: Exit");
-                  return roles;
+                  departments.unshift("0: Exit");
+                  return departments;
                 },
               },
 
@@ -577,10 +592,10 @@ function editEmployees() {
 
                   .then(function (answer) {
                     let query =
-                      "SELECT employees.first_name, employees.last_name, roles.title, roles.salary, department.dept_name, employees.manager_id " +
+                      "SELECT employees.first_name, employees.last_name, departments.title, departments.salary, department.dept_name, employees.manager_id " +
                       "FROM employees " +
-                      "JOIN roles ON roles.id = employees.role_id " +
-                      "JOIN department ON roles.department_id = department.id " +
+                      "JOIN departments ON departments.id = employees.role_id " +
+                      "JOIN department ON departments.department_id = department.id " +
                       "ORDER BY employees.id;";
 
                     connection.query(query, function (err, res) {
@@ -616,14 +631,25 @@ function editEmployees() {
   });
 }
 
-function viewRoles() {
-    var query = "SELECT * FROM roles";
+function viewDepts() {
+    var query = "SELECT * FROM departments";
     connection.query(query, function(err, res) {
-        console.log(`ROLES:`)
-        res.forEach(role => {
-            console.log(`ID: ${roles.id} | Title: ${roles.title} | Salary: ${roles.salary} | Department ID: ${roles.department_id}`);
+        console.log(`departments:`)
+        res.forEach(departments => {
+            console.log(`ID: ${departments.id} | Title: ${departments.title} | Salary: ${departments.salary} | Department ID: ${departments.department_id}`);
         })
-        start();
+        cliPrompt();
+    });
+};
+
+function viewDepts() {
+    var query = "SELECT * FROM departments";
+    connection.query(query, function(err, res) {
+        console.log(`Departments:`)
+        res.forEach(departments => {
+            console.log(`ID: ${departments.id} | Title: ${departments.title} | Salary: ${departments.salary} | Department ID: ${departments.department_id}`);
+        })
+        cliPrompt();
     });
 };
 
