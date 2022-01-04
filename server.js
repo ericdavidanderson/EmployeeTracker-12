@@ -1,6 +1,7 @@
 //dependencies
 const mysql = require("mysql2");
 const inquirer = require("inquirer");
+const PoolNamespace = require("mysql/lib/PoolNamespace");
 
 require("dotenv").config();
 
@@ -195,8 +196,11 @@ function addDept() {
 }
 
 function addRole() {
-  connection.query("SELECT * FROM departments", function (err, res) {
+  connection.query("SELECT * FROM departments", function (err,res) {
     if (err) throw err;
+    const department = res.map(element =>{
+      return element.id
+    })
     inquirer
       .prompt([
         {
@@ -210,262 +214,64 @@ function addRole() {
           message: "What salary does this role require?",
         },
         {
-          name: "deptName",
+          name: "department_ID",
           type: "list",
           message: "Which department is this role in?",
-          choices: function (res) {
-            var choiceArray = [];
-            res.forEach((res) => {
-              choiceArray.push(res.name);
-            });
-            return choiceArray;
-          },
+          choices: department,
         },
       ])
 
       .then(function (answer) {
-        const departments = answer.deptName;
-        connection.query("SELECT * FROM departents", function (err, res) {
+        connection.query("INSERT INTO roles SET ?", answer, function (err) {
           if (err) throw err;
-          let filteredDept = res.filter(function (res) {
-            return res.name == departments;
-          });
-          let id = filteredDept[0].id;
-          let query =
-            "INSERT INTO roles (title, salary, department_id) VALUES (?, ?, ?)";
-          let values = [answer.title, parseInt(answer.salary), answer.deptName];
-          console.log(values);
-          connection.query(query, values, function (err, res) {
-            console.log(
-              `You have added this role: ${values[0].toUpperCase()}.`
-            );
-          });
+          console.log(`${answer.title} role added`);
 
-          viewRoles();
+          cliPrompt();
         });
       });
   });
 }
 
 function editEmployees() {
-  let query = "SELECT title FROM departments";
-
-  let query2 =
-    "SELECT employees.first_name, employees.last_name, departments.title, departments.salary, departments.dept_name, employees.manager.id " +
-    "FROM employees " +
-    "JOIN departments ON departments.id = employees.role_id " +
-    "JOIN departments ON departments.department_id = departments.id" +
-    "ORDER BY employees.id;";
-
-  connection.query(query, function (err, res) {
-    if (err) throw err;
-
-    let departmentsList = res;
-
-    connection.query(query2, function (err, res) {
+  connection.query("SELECT * FROM employees",function(err,res){
+    if(err) throw err;
+    const updatedName =res.map(element => {
+      return `${element.id}: ${element.first_name} ${element.last_name}`
+    })
+connection.query("SELECT title, id from roles", function(err,success){
+  if (err) throw err;
+  const role = success.map(element => element.title);
+  inquirer.prompt([
+    {
+      name: "emp",
+      type: "list",
+      choices: updatedName,
+      message:"Select employee to update"
+    },
+    {
+      name: "role",
+      type:"list",
+      message:"What is the title of the new role",
+      choices: role
+    }
+  ]).then(answers => {
+    const updatedEmployee = answer.emp.split(":") [0];
+    const updatedRole = success.find(element =>{
+      return element.title === answer.role
+    });
+    connection.query("UPDATE employee SET role_id=? where id=?", [updatedRole.id,updatedEmployee], function(err,success){
       if (err) throw err;
-
-      for (i = 0; i < res.length; i++) {
-        if (res[i].manager_id == 0) {
-          res[i].manager = "None";
-        } else {
-          res[i].manager =
-            res[res[i].manager_id - 1].first_name +
-            " " +
-            res[res[i].manager_id - 1].last_name;
-        }
-
-        delete res[i].manager_id;
-      }
-
-      console.table(res);
-
-      let employeeList = res;
-
-      let addEmpPrompt = [
-        {
-          name: "select_employee",
-          type: "list",
-          message: "Select employee to edit",
-
-          choices: function () {
-            employees = [];
-
-            for (i = 0; i < employeeList.length; i++) {
-              const mId = i + 1;
-
-              employees.push(
-                mId +
-                  ": " +
-                  employeeList[i].first_name +
-                  " " +
-                  employeeList[i].last_name
-              );
-            }
-            employees.unshift("0:Exit");
-
-            return employees;
-          },
-        },
-      ];
-
-      inquirer
-        .prompt(addEmpPrompt)
-
-        .then(function (answer) {
-          if (answer.select_employee == "0: Exit") {
-            cliPrompt();
-          } else {
-            let empSelect = answer.select_employee.split(":")[0];
-
-            let empPropPrompt = [
-              {
-                name: "select_role",
-                type: "list",
-                message: "Edit employee role.",
-
-                choices: function () {
-                  departments = [];
-
-                  for (i = 0; i < departmentsList.length; i++) {
-                    const roleId = i + 1;
-
-                    departments.push(roleId + ": " + departmentsList[i].title);
-                  }
-
-                  departments.unshift("0: Exit");
-                  return departments;
-                },
-              },
-
-              {
-                name: "select_manager",
-                type: "list",
-                message: "Edit employee manager",
-
-                choices: function () {
-                  managers = [];
-
-                  for (i = 0; i < employeeList.length; i++) {
-                    const mId = i + 1;
-
-                    if (
-                      answer.select_employee.split(": ")[1] !==
-                      employeeList[i].first_name +
-                        " " +
-                        employeeList[i].last_name
-                    ) {
-                      managers.push(
-                        mId +
-                          ": " +
-                          employeeList[i].first_name +
-                          " " +
-                          employeeList[i].last_name
-                      );
-                    }
-                  }
-
-                  managers.unshift("0: None");
-
-                  managers.unshift("E: Exit");
-
-                  return managers;
-                },
-
-                when: function (answers) {
-                  return answers.select_role !== "0: Exit";
-                },
-              },
-            ];
-
-            inquirer.prompt(empPropPrompt).then(function (answer) {
-              if (
-                answer.select_role == "0: Exit" ||
-                answer.select_manager == "E: Exit"
-              ) {
-                cliPrompt();
-              } else {
-                console.log(answer);
-
-                let query =
-                  "UPDATE employees SET ? WHERE employees.id = " + empSelect;
-
-                connection.query(
-                  query,
-                  {
-                    role_id: parseInt(answer.select_role.split(":")[0]),
-                    manager_id: parseInt(answer.select_manager.split(":")[0]),
-                  },
-                  function (err, res) {
-                    if (err) throw err;
-                  }
-                );
-
-                let addAgainP = [
-                  {
-                    name: "again",
-                    type: "list",
-                    message: "Would you like to add another employee?",
-                    choices: ["Yes", "Exit"],
-                  },
-                ];
-
-                inquirer
-                  .prompt(addAgainP)
-
-                  .then(function (answer) {
-                    let query =
-                      "SELECT employees.first_name, employees.last_name, departments.title, departments.salary, department.dept_name, employees.manager_id " +
-                      "FROM employees " +
-                      "JOIN departments ON departments.id = employees.role_id " +
-                      "JOIN department ON departments.department_id = department.id " +
-                      "ORDER BY employees.id;";
-
-                    connection.query(query, function (err, res) {
-                      if (err) throw err;
-
-                      if (answer.again == "Yes") {
-                        updateEmployee();
-                      } else if (answer.again == "Exit") {
-                        for (i = 0; i < res.length; i++) {
-                          if (res[i].manager_id == 0) {
-                            res[i].manager = "None";
-                          } else {
-                            res[i].manager =
-                              res[res[i].manager_id - 1].first_name +
-                              " " +
-                              res[res[i].manager_id - 1].last_name;
-                          }
-
-                          delete res[i].manager_id;
-                        }
-
-                        console.table(res);
-
-                        cliPrompt();
-                      }
-                    });
-                  });
-              }
-            });
-          }
-        });
-    });
-  });
+      console.log("role has been changed");
+      cliPrompt()
+      })
+    })
+  })
+})
 }
 
-function viewDepts() {
-  var query = "SELECT * FROM departments";
-  connection.query(query, function (err, res) {
-    console.log(`departments:`);
-    res.forEach((departments) => {
-      console.log(
-        `ID: ${departments.id} | Title: ${departments.title} | Salary: ${departments.salary} | Department ID: ${departments.department_id}`
-      );
-    });
-    cliPrompt();
-  });
-}
+ 
+          
+
 
 function viewDepts() {
   var query = "SELECT * FROM departments";
@@ -473,7 +279,7 @@ function viewDepts() {
     console.log(`Departments:`);
     res.forEach((departments) => {
       console.log(
-        `ID: ${departments.id} | Title: ${departments.title} | Salary: ${departments.salary} | Department ID: ${departments.department_id}`
+        `ID: ${departments.id} | Title: ${departments.dept_name}`
       );
     });
     cliPrompt();
