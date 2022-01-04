@@ -27,7 +27,6 @@ const mPrompt = [
       "Add employees",
       "Add roles",
       "Edit employees",
-      "Remove employees",
       "Exit",
     ],
   },
@@ -51,9 +50,7 @@ function cliPrompt() {
         addDept();
       } else if (answer.action == "Edit employees") {
         editEmployees();
-      } else if (answer.action == "Remove employees") {
-        deleteEmployees();
-      } else if (answer.action == "View roles") {
+      }  else if (answer.action == "View roles") {
         viewRoles();
       } else if (answer.action == "Exit") {
         exit();
@@ -255,11 +252,11 @@ connection.query("SELECT title, id from roles", function(err,success){
       choices: role
     }
   ]).then(answers => {
-    const updatedEmployee = answer.emp.split(":") [0];
+    const updatedEmployee = answers.emp.split(":") [0];
     const updatedRole = success.find(element =>{
-      return element.title === answer.role
+      return element.title === answers.role
     });
-    connection.query("UPDATE employee SET role_id=? where id=?", [updatedRole.id,updatedEmployee], function(err,success){
+    connection.query("UPDATE employees SET role_id=? where id=?", [updatedRole.id,updatedEmployee], function(err,success){
       if (err) throw err;
       console.log("role has been changed");
       cliPrompt()
@@ -286,124 +283,9 @@ function viewDepts() {
   });
 }
 
-function deleteEmployee() {
-  let query =
-    "SELECT employees.id, employees.first_name, employees.last_name FROM employees;";
 
-  connection.query(query, function (err, res) {
-    if (err) throw err;
 
-    for (i = 0; i < res.length; i++) {
-      res[i].employee = res[i].first_name + " " + res[i].last_name;
-
-      delete res[i].first_name;
-
-      delete res[i].last_name;
-    }
-
-    console.table(res);
-
-    let employeeList = res;
-
-    let addEmpPrompt = [
-      {
-        name: "select_employee",
-        type: "list",
-        message: "Terminate employee",
-
-        choices: function () {
-          employees = [];
-
-          for (i = 0; i < employeeList.length; i++) {
-            employees.push(
-              employeeList[i].id + ": " + employeeList[i].employee
-            );
-          }
-
-          employees.unshift("0: Exit");
-
-          return employees;
-        },
-      },
-
-      {
-        name: "confirm",
-        type: "list",
-
-        message: function (answers) {
-          return (
-            "Are you sure you want to TERMINATE " +
-            answers.select_employee.split(": ")[1]
-          );
-        },
-
-        choices: ["Yes", "No"],
-
-        when: function (answers) {
-          return answers.select_employee !== "0: Exit";
-        },
-      },
-    ];
-
-    inquirer
-      .prompt(addEmpPrompt)
-
-      .then(function (answer) {
-        if (answer.select_employee == "0: Exit") {
-          cliPrompt();
-        } else if (answer.confirm == "No") {
-          deleteEmployee();
-        } else {
-          let query =
-            "DELETE FROM employees WHERE employees.id =" +
-            answer.select_employee.split(": ")[0];
-
-          connection.query(query, function (err, res) {
-            if (err) throw err;
-          });
-
-          let addAgainP = [
-            {
-              name: "again",
-              type: "list",
-              message: "Would you like to remove another employee?",
-              choices: ["Yes", "Exit"],
-            },
-          ];
-
-          inquirer
-            .prompt(addAgainP)
-
-            .then(function (answer) {
-              let query =
-                "SELECT employees.id, employees.first_name, employees.last_name FROM employees;";
-
-              connection.query(query, function (err, res) {
-                if (err) throw err;
-
-                for (i = 0; i < res.length; i++) {
-                  res[i].employee = res[i].first_name + " " + res[i].last_name;
-
-                  delete res[i].first_name;
-
-                  delete res[i].last_name;
-                }
-
-                if (answer.again == "Yes") {
-                  deleteEmployee();
-                } else if (answer.again == "Exit") {
-                  console.table(res);
-
-                  cliPrompt();
-                }
-              });
-            });
-        }
-      });
-  });
-}
-
-function exit() {
+  function exit() {
   connection.end();
 }
 
