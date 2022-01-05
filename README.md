@@ -14,7 +14,9 @@
 - [Questions](#email)    :mailbox: 
 
 ## Description: 
-The employee tracker app will allow a business owner to add employees to a database that will have 3 tables for employees, departments, and roles.    
+The employee tracker app will allow a business owner to add employees to a database that will have 3 tables for employees, departments, and roles.   
+
+## CLI video  https://vimeo.com/662763178/3fcc2ecc39
 
 ## Installation:
 This app is run from the terminal.  From the server.js file enter: ' node index.js' to start the program.
